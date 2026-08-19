@@ -35,7 +35,9 @@ describe("SwapSettlement", async () => {
   const publicClient = await viem.getPublicClient();
   const [deployer, user, solverOperator] = await viem.getWalletClients();
 
-  let settlement: Awaited<ReturnType<typeof viem.deployContract<"SwapSettlement">>>;
+  let settlement: Awaited<
+    ReturnType<typeof viem.deployContract<"SwapSettlement">>
+  >;
   let sellToken: Awaited<ReturnType<typeof viem.deployContract<"MockERC20">>>;
   let buyToken: Awaited<ReturnType<typeof viem.deployContract<"MockERC20">>>;
   let solver: Awaited<ReturnType<typeof viem.deployContract<"MockSolver">>>;
@@ -79,12 +81,23 @@ describe("SwapSettlement", async () => {
 
   beforeEach(async () => {
     settlement = await viem.deployContract("SwapSettlement");
-    sellToken = await viem.deployContract("MockERC20", ["Sell", "SELL", SELL_DECIMALS]);
-    buyToken = await viem.deployContract("MockERC20", ["Buy", "BUY", BUY_DECIMALS]);
+    sellToken = await viem.deployContract("MockERC20", [
+      "Sell",
+      "SELL",
+      SELL_DECIMALS,
+    ]);
+    buyToken = await viem.deployContract("MockERC20", [
+      "Buy",
+      "BUY",
+      BUY_DECIMALS,
+    ]);
     solver = await viem.deployContract("MockSolver");
 
     await sellToken.write.mint([user.account.address, SELL_AMOUNT]);
-    await buyToken.write.mint([solver.address, parseUnits("1000000", BUY_DECIMALS)]);
+    await buyToken.write.mint([
+      solver.address,
+      parseUnits("1000000", BUY_DECIMALS),
+    ]);
     await sellToken.write.approve([settlement.address, SELL_AMOUNT], {
       account: user.account,
     });
@@ -163,7 +176,10 @@ describe("SwapSettlement", async () => {
       });
 
       assert.equal(await sellToken.read.balanceOf([user.account.address]), 0n);
-      assert.equal(await buyToken.read.balanceOf([user.account.address]), MIN_BUY_AMOUNT);
+      assert.equal(
+        await buyToken.read.balanceOf([user.account.address]),
+        MIN_BUY_AMOUNT,
+      );
       assert.equal(
         await sellToken.read.balanceOf([solverOperator.account.address]),
         SELL_AMOUNT,
@@ -252,7 +268,10 @@ describe("SwapSettlement", async () => {
         "SolverFailure",
       );
 
-      assert.equal(await sellToken.read.balanceOf([user.account.address]), SELL_AMOUNT);
+      assert.equal(
+        await sellToken.read.balanceOf([user.account.address]),
+        SELL_AMOUNT,
+      );
     });
 
     it("reverts when the user balance is short", async () => {
@@ -315,7 +334,11 @@ describe("SwapSettlement", async () => {
       const order = buildOrder();
       const signature = await signOrder(order);
 
-      for (const target of [sellToken.address, buyToken.address, settlement.address]) {
+      for (const target of [
+        sellToken.address,
+        buyToken.address,
+        settlement.address,
+      ]) {
         await viem.assertions.revertWithCustomError(
           settlement.write.settle([order, signature, target, "0x"], {
             account: solverOperator.account,
@@ -336,7 +359,10 @@ describe("SwapSettlement", async () => {
         account: solverOperator.account,
       });
 
-      assert.equal(await settlement.read.nonceUsed([user.account.address, order.nonce]), true);
+      assert.equal(
+        await settlement.read.nonceUsed([user.account.address, order.nonce]),
+        true,
+      );
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle([order, signature, solver.address, "0x"], {
@@ -351,7 +377,9 @@ describe("SwapSettlement", async () => {
       const order = buildOrder();
       const signature = await signOrder(order);
 
-      await settlement.write.cancelNonce([order.nonce], { account: user.account });
+      await settlement.write.cancelNonce([order.nonce], {
+        account: user.account,
+      });
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle([order, signature, solver.address, "0x"], {
@@ -389,7 +417,10 @@ describe("SwapSettlement", async () => {
       account: solverOperator.account,
     });
 
-    assert.equal(await sellToken.read.balanceOf([deployer.account.address]), 0n);
+    assert.equal(
+      await sellToken.read.balanceOf([deployer.account.address]),
+      0n,
+    );
     assert.equal(await buyToken.read.balanceOf([deployer.account.address]), 0n);
   });
 });

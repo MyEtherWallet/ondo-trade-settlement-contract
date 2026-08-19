@@ -27,12 +27,14 @@ contract SwapSettlement is EIP712, ReentrancyGuard {
         uint256 deadline;
     }
 
-    bytes32 private constant SWAP_ORDER_TYPEHASH = keccak256(
-        "SwapOrder(address user,address fromToken,address toToken,uint256 fromAmount,uint256 minToAmount,uint256 nonce,uint256 deadline)"
-    );
+    bytes32 private constant SWAP_ORDER_TYPEHASH =
+        keccak256(
+            "SwapOrder(address user,address fromToken,address toToken,uint256 fromAmount,uint256 minToAmount,uint256 nonce,uint256 deadline)"
+        );
 
     /// @notice Tracks consumed order nonces per user.
-    mapping(address user => mapping(uint256 nonce => bool used)) public nonceUsed;
+    mapping(address user => mapping(uint256 nonce => bool used))
+        public nonceUsed;
 
     event Settled(
         bytes32 indexed orderHash,
@@ -60,20 +62,21 @@ contract SwapSettlement is EIP712, ReentrancyGuard {
 
     /// @notice Returns the EIP-712 digest a user must sign for `order`.
     function hashOrder(SwapOrder calldata order) public view returns (bytes32) {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    SWAP_ORDER_TYPEHASH,
-                    order.user,
-                    order.fromToken,
-                    order.toToken,
-                    order.fromAmount,
-                    order.minToAmount,
-                    order.nonce,
-                    order.deadline
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        SWAP_ORDER_TYPEHASH,
+                        order.user,
+                        order.fromToken,
+                        order.toToken,
+                        order.fromAmount,
+                        order.minToAmount,
+                        order.nonce,
+                        order.deadline
+                    )
                 )
-            )
-        );
+            );
     }
 
     /// @notice Returns the EIP-712 domain separator used by this contract.
@@ -83,7 +86,8 @@ contract SwapSettlement is EIP712, ReentrancyGuard {
 
     /// @notice Invalidates one of the caller's order nonces before it is settled.
     function cancelNonce(uint256 nonce) external {
-        if (nonceUsed[msg.sender][nonce]) revert NonceAlreadyUsed(msg.sender, nonce);
+        if (nonceUsed[msg.sender][nonce])
+            revert NonceAlreadyUsed(msg.sender, nonce);
         nonceUsed[msg.sender][nonce] = true;
         emit NonceCancelled(msg.sender, nonce);
     }
@@ -114,17 +118,23 @@ contract SwapSettlement is EIP712, ReentrancyGuard {
 
         fromToken.safeTransferFrom(order.user, address(this), order.fromAmount);
 
-        uint256 fromAmount = fromToken.balanceOf(address(this)) - fromBalanceBefore;
+        uint256 fromAmount = fromToken.balanceOf(address(this)) -
+            fromBalanceBefore;
         if (fromAmount < order.fromAmount) {
             revert SellTransferShortfall(fromAmount, order.fromAmount);
         }
 
         ISettlementCallback(callbackTarget).settlementCallback(
-            order.fromToken, fromAmount, order.toToken, order.minToAmount, callbackData
+            order.fromToken,
+            fromAmount,
+            order.toToken,
+            order.minToAmount,
+            callbackData
         );
 
         toAmount = toToken.balanceOf(address(this)) - toBalanceBefore;
-        if (toAmount < order.minToAmount) revert InsufficientOutput(toAmount, order.minToAmount);
+        if (toAmount < order.minToAmount)
+            revert InsufficientOutput(toAmount, order.minToAmount);
 
         toToken.safeTransfer(order.user, toAmount);
         fromToken.safeTransfer(msg.sender, fromAmount);
@@ -145,19 +155,25 @@ contract SwapSettlement is EIP712, ReentrancyGuard {
         bytes calldata signature,
         address callbackTarget
     ) private view returns (bytes32 orderHash) {
-        if (block.timestamp > order.deadline) revert OrderExpired(order.deadline);
+        if (block.timestamp > order.deadline)
+            revert OrderExpired(order.deadline);
         if (
-            order.user == address(0) || order.fromToken == address(0)
-                || order.toToken == address(0) || order.fromToken == order.toToken
-                || order.fromAmount == 0 || order.minToAmount == 0
+            order.user == address(0) ||
+            order.fromToken == address(0) ||
+            order.toToken == address(0) ||
+            order.fromToken == order.toToken ||
+            order.fromAmount == 0 ||
+            order.minToAmount == 0
         ) {
             revert InvalidOrder();
         }
         // A callback that is the contract itself or either token would let a solver
         // hijack this contract's balances and user approvals.
         if (
-            callbackTarget == address(0) || callbackTarget == address(this)
-                || callbackTarget == order.fromToken || callbackTarget == order.toToken
+            callbackTarget == address(0) ||
+            callbackTarget == address(this) ||
+            callbackTarget == order.fromToken ||
+            callbackTarget == order.toToken
         ) {
             revert InvalidCallbackTarget();
         }
@@ -166,16 +182,27 @@ contract SwapSettlement is EIP712, ReentrancyGuard {
         }
 
         orderHash = hashOrder(order);
-        if (!SignatureChecker.isValidSignatureNow(order.user, orderHash, signature)) {
+        if (
+            !SignatureChecker.isValidSignatureNow(
+                order.user,
+                orderHash,
+                signature
+            )
+        ) {
             revert InvalidSignature();
         }
     }
 
-    function _checkUserFunds(IERC20 token, address user, uint256 amount) private view {
+    function _checkUserFunds(
+        IERC20 token,
+        address user,
+        uint256 amount
+    ) private view {
         uint256 balance = token.balanceOf(user);
         if (balance < amount) revert InsufficientUserBalance(balance, amount);
 
         uint256 allowance = token.allowance(user, address(this));
-        if (allowance < amount) revert InsufficientUserAllowance(allowance, amount);
+        if (allowance < amount)
+            revert InsufficientUserAllowance(allowance, amount);
     }
 }

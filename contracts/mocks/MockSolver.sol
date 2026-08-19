@@ -23,13 +23,16 @@ contract MockSolver is ISettlementCallback {
     }
 
     function settlementCallback(
-        address, /* fromToken */
-        uint256, /* fromAmount */
+        address /* fromToken */,
+        uint256 /* fromAmount */,
         address toToken,
         uint256 minToAmount,
         bytes calldata /* data */
     ) external override {
         if (shouldRevert) revert SolverFailure();
-        IERC20(toToken).transfer(msg.sender, (minToAmount * payoutBps) / 10_000);
+        IERC20(toToken).transfer(
+            msg.sender,
+            (minToAmount * payoutBps) / 10_000
+        );
     }
 }
