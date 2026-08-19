@@ -29,6 +29,7 @@ const PERMIT2_WITNESS_TYPES = {
   SwapWitness: [
     { name: "toToken", type: "address" },
     { name: "minToAmount", type: "uint256" },
+    { name: "solver", type: "address" },
   ],
 } as const;
 
@@ -38,7 +39,7 @@ type Permit = {
   deadline: bigint;
 };
 
-type Witness = { toToken: Address; minToAmount: bigint };
+type Witness = { toToken: Address; minToAmount: bigint; solver: Address };
 
 describe("SwapSettlement", async () => {
   const publicClient = await viem.getPublicClient();
@@ -83,6 +84,7 @@ describe("SwapSettlement", async () => {
     return {
       toToken: buyToken.address,
       minToAmount: MIN_BUY_AMOUNT,
+      solver: solverOperator.account.address,
       ...overrides,
     };
   }
@@ -148,7 +150,7 @@ describe("SwapSettlement", async () => {
     it("exposes a witness type string that Permit2 accepts", async () => {
       assert.equal(
         await settlement.read.WITNESS_TYPE_STRING(),
-        "SwapWitness witness)SwapWitness(address toToken,uint256 minToAmount)TokenPermissions(address token,uint256 amount)",
+        "SwapWitness witness)SwapWitness(address toToken,uint256 minToAmount,address solver)TokenPermissions(address token,uint256 amount)",
       );
     });
 
@@ -288,6 +290,53 @@ describe("SwapSettlement", async () => {
             "0x",
           ],
           { account: solverOperator.account },
+        ),
+        permit2,
+        "InvalidSigner",
+      );
+    });
+
+    it("rejects a caller that is not the signed solver", async () => {
+      const permit = buildPermit();
+      const witness = buildWitness();
+      const signature = await signPermit(permit, witness);
+
+      await viem.assertions.revertWithCustomError(
+        settlement.write.settle(
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
+          { account: deployer.account },
+        ),
+        settlement,
+        "UnauthorizedSolver",
+      );
+    });
+
+    // Rewriting the solver to name yourself passes the msg.sender check but
+    // changes the witness hash, so the signature no longer recovers the owner.
+    // This is what makes the solver binding a commitment rather than a hint.
+    it("rejects a solver substituted after signing", async () => {
+      const permit = buildPermit();
+      const witness = buildWitness();
+      const signature = await signPermit(permit, witness);
+
+      await viem.assertions.revertWithCustomError(
+        settlement.write.settle(
+          [
+            permit,
+            user.account.address,
+            { ...witness, solver: deployer.account.address },
+            signature,
+            solver.address,
+            "0x",
+          ],
+          { account: deployer.account },
         ),
         permit2,
         "InvalidSigner",

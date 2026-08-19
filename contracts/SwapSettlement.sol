@@ -33,11 +33,12 @@ contract SwapSettlement is ReentrancyGuard {
         keccak256("SwapWitness(address toToken,uint256 minToAmount,address solver)");
 
     /// @notice Witness type string appended to Permit2's `PermitWitnessTransferFrom` stub.
-    /// @dev Referenced struct types must follow EIP-712 alphabetical ordering.
+    /// @dev Referenced struct types must follow EIP-712 alphabetical ordering, and the
+    /// encoding carries no whitespace: Permit2 concatenates this onto its stub and
+    /// hashes the result, so a single stray space yields a type hash no client will
+    /// reproduce. It must stay character-identical to {WITNESS_TYPEHASH}'s argument.
     string public constant WITNESS_TYPE_STRING =
-        "SwapWitness witness)SwapWitness(address toToken,uint256 minToAmount, address solver)TokenPermissions(address token,uint256 amount)";
-
-    error UnauthorizedSolver(address caller, address expected);
+        "SwapWitness witness)SwapWitness(address toToken,uint256 minToAmount,address solver)TokenPermissions(address token,uint256 amount)";
 
     /// @notice The Permit2 deployment used to pull the sell token.
     ISignatureTransfer public immutable PERMIT2;
@@ -55,6 +56,7 @@ contract SwapSettlement is ReentrancyGuard {
     error InvalidPermit2();
     error InvalidOrder();
     error InvalidCallbackTarget();
+    error UnauthorizedSolver(address caller, address expected);
     error InsufficientUserBalance(uint256 available, uint256 required);
     error InsufficientPermit2Allowance(uint256 available, uint256 required);
     error SellTransferShortfall(uint256 received, uint256 expected);
