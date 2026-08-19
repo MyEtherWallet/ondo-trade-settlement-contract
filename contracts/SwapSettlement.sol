@@ -25,16 +25,19 @@ contract SwapSettlement is ReentrancyGuard {
     struct SwapWitness {
         address toToken;
         uint256 minToAmount;
+        address solver;
     }
 
     /// @notice EIP-712 type hash of {SwapWitness}.
     bytes32 public constant WITNESS_TYPEHASH =
-        keccak256("SwapWitness(address toToken,uint256 minToAmount)");
+        keccak256("SwapWitness(address toToken,uint256 minToAmount,address solver)");
 
     /// @notice Witness type string appended to Permit2's `PermitWitnessTransferFrom` stub.
     /// @dev Referenced struct types must follow EIP-712 alphabetical ordering.
     string public constant WITNESS_TYPE_STRING =
-        "SwapWitness witness)SwapWitness(address toToken,uint256 minToAmount)TokenPermissions(address token,uint256 amount)";
+        "SwapWitness witness)SwapWitness(address toToken,uint256 minToAmount, address solver)TokenPermissions(address token,uint256 amount)";
+
+    error UnauthorizedSolver(address caller, address expected);
 
     /// @notice The Permit2 deployment used to pull the sell token.
     ISignatureTransfer public immutable PERMIT2;
@@ -71,7 +74,8 @@ contract SwapSettlement is ReentrancyGuard {
                 abi.encode(
                     WITNESS_TYPEHASH,
                     witness.toToken,
-                    witness.minToAmount
+                    witness.minToAmount,
+                    witness.solver
                 )
             );
     }
@@ -158,11 +162,15 @@ contract SwapSettlement is ReentrancyGuard {
             user == address(0) ||
             permit.permitted.token == address(0) ||
             witness.toToken == address(0) ||
+            witness.solver == address(0) ||
             permit.permitted.token == witness.toToken ||
             permit.permitted.amount == 0 ||
             witness.minToAmount == 0
         ) {
             revert InvalidOrder();
+        }
+        if (msg.sender != witness.solver) {
+            revert UnauthorizedSolver(msg.sender, witness.solver);
         }
         // A callback that is this contract, Permit2, or either token would let a solver
         // hijack settlement balances or the user's Permit2 approvals.
