@@ -935,6 +935,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openzeppelin/contracts@npm:5.6.1":
+  version: 5.6.1
+  resolution: "@openzeppelin/contracts@npm:5.6.1"
+  checksum: 10c0/f00ecd2b63ca99361e772a9355a587345a2b2af8ead3e88996e0bd1eef89221c3f762cfb77632c1a6ea866a5d3bc030eea1790bd9d326d8ad71f8edee20a5b37
+  languageName: node
+  linkType: hard
+
 "@scure/base@npm:~1.1.6":
   version: 1.1.9
   resolution: "@scure/base@npm:1.1.9"
@@ -1674,6 +1681,7 @@ __metadata:
     "@nomicfoundation/hardhat-viem": "npm:^3.0.9"
     "@nomicfoundation/hardhat-viem-assertions": "npm:^3.1.2"
     "@nomicfoundation/ignition-core": "npm:^3.1.9"
+    "@openzeppelin/contracts": "npm:5.6.1"
     "@types/node": "npm:^22"
     hardhat: "npm:^3"
     typescript: "npm:~5.8"
