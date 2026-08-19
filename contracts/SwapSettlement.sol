@@ -63,8 +63,17 @@ contract SwapSettlement is ReentrancyGuard {
     }
 
     /// @notice Returns the EIP-712 struct hash of `witness`, as committed to by the user.
-    function hashWitness(SwapWitness calldata witness) public pure returns (bytes32) {
-        return keccak256(abi.encode(WITNESS_TYPEHASH, witness.toToken, witness.minToAmount));
+    function hashWitness(
+        SwapWitness calldata witness
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    WITNESS_TYPEHASH,
+                    witness.toToken,
+                    witness.minToAmount
+                )
+            );
     }
 
     /// @notice Settles a Permit2-signed swap using liquidity supplied by `callbackTarget`.
@@ -106,13 +115,18 @@ contract SwapSettlement is ReentrancyGuard {
             signature
         );
 
-        uint256 fromAmount = fromToken.balanceOf(address(this)) - fromBalanceBefore;
+        uint256 fromAmount = fromToken.balanceOf(address(this)) -
+            fromBalanceBefore;
         if (fromAmount < permit.permitted.amount) {
             revert SellTransferShortfall(fromAmount, permit.permitted.amount);
         }
 
         ISettlementCallback(callbackTarget).settlementCallback(
-            address(fromToken), fromAmount, address(toToken), witness.minToAmount, callbackData
+            address(fromToken),
+            fromAmount,
+            address(toToken),
+            witness.minToAmount,
+            callbackData
         );
 
         toAmount = toToken.balanceOf(address(this)) - toBalanceBefore;
@@ -141,28 +155,38 @@ contract SwapSettlement is ReentrancyGuard {
         address callbackTarget
     ) private view {
         if (
-            user == address(0) || permit.permitted.token == address(0)
-                || witness.toToken == address(0) || permit.permitted.token == witness.toToken
-                || permit.permitted.amount == 0 || witness.minToAmount == 0
+            user == address(0) ||
+            permit.permitted.token == address(0) ||
+            witness.toToken == address(0) ||
+            permit.permitted.token == witness.toToken ||
+            permit.permitted.amount == 0 ||
+            witness.minToAmount == 0
         ) {
             revert InvalidOrder();
         }
         // A callback that is this contract, Permit2, or either token would let a solver
         // hijack settlement balances or the user's Permit2 approvals.
         if (
-            callbackTarget == address(0) || callbackTarget == address(this)
-                || callbackTarget == address(PERMIT2)
-                || callbackTarget == permit.permitted.token || callbackTarget == witness.toToken
+            callbackTarget == address(0) ||
+            callbackTarget == address(this) ||
+            callbackTarget == address(PERMIT2) ||
+            callbackTarget == permit.permitted.token ||
+            callbackTarget == witness.toToken
         ) {
             revert InvalidCallbackTarget();
         }
     }
 
-    function _checkUserFunds(IERC20 token, address user, uint256 amount) private view {
+    function _checkUserFunds(
+        IERC20 token,
+        address user,
+        uint256 amount
+    ) private view {
         uint256 balance = token.balanceOf(user);
         if (balance < amount) revert InsufficientUserBalance(balance, amount);
 
         uint256 allowance = token.allowance(user, address(PERMIT2));
-        if (allowance < amount) revert InsufficientPermit2Allowance(allowance, amount);
+        if (allowance < amount)
+            revert InsufficientPermit2Allowance(allowance, amount);
     }
 }

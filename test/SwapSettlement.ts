@@ -4,7 +4,10 @@ import { before, beforeEach, describe, it } from "node:test";
 import { network } from "hardhat";
 import { getAddress, parseUnits, type Address, type Hex } from "viem";
 
-import { PERMIT2_ADDRESS, PERMIT2_RUNTIME_BYTECODE } from "./fixtures/permit2.js";
+import {
+  PERMIT2_ADDRESS,
+  PERMIT2_RUNTIME_BYTECODE,
+} from "./fixtures/permit2.js";
 
 const { viem, provider } = await network.getOrCreate();
 
@@ -41,7 +44,9 @@ describe("SwapSettlement", async () => {
   const publicClient = await viem.getPublicClient();
   const [deployer, user, solverOperator] = await viem.getWalletClients();
 
-  let settlement: Awaited<ReturnType<typeof viem.deployContract<"SwapSettlement">>>;
+  let settlement: Awaited<
+    ReturnType<typeof viem.deployContract<"SwapSettlement">>
+  >;
   let sellToken: Awaited<ReturnType<typeof viem.deployContract<"MockERC20">>>;
   let buyToken: Awaited<ReturnType<typeof viem.deployContract<"MockERC20">>>;
   let solver: Awaited<ReturnType<typeof viem.deployContract<"MockSolver">>>;
@@ -52,7 +57,9 @@ describe("SwapSettlement", async () => {
 
   let chainId: number;
   let nextNonce = 0n;
-  let permit2: Awaited<ReturnType<typeof viem.getContractAt<"ISignatureTransfer">>>;
+  let permit2: Awaited<
+    ReturnType<typeof viem.getContractAt<"ISignatureTransfer">>
+  >;
 
   before(async () => {
     chainId = await publicClient.getChainId();
@@ -73,7 +80,11 @@ describe("SwapSettlement", async () => {
   }
 
   function buildWitness(overrides: Partial<Witness> = {}): Witness {
-    return { toToken: buyToken.address, minToAmount: MIN_BUY_AMOUNT, ...overrides };
+    return {
+      toToken: buyToken.address,
+      minToAmount: MIN_BUY_AMOUNT,
+      ...overrides,
+    };
   }
 
   async function signPermit(
@@ -99,20 +110,36 @@ describe("SwapSettlement", async () => {
 
   beforeEach(async () => {
     settlement = await viem.deployContract("SwapSettlement", [PERMIT2_ADDRESS]);
-    sellToken = await viem.deployContract("MockERC20", ["Sell", "SELL", SELL_DECIMALS]);
-    buyToken = await viem.deployContract("MockERC20", ["Buy", "BUY", BUY_DECIMALS]);
+    sellToken = await viem.deployContract("MockERC20", [
+      "Sell",
+      "SELL",
+      SELL_DECIMALS,
+    ]);
+    buyToken = await viem.deployContract("MockERC20", [
+      "Buy",
+      "BUY",
+      BUY_DECIMALS,
+    ]);
     solver = await viem.deployContract("MockSolver");
 
     await sellToken.write.mint([user.account.address, SELL_AMOUNT]);
-    await buyToken.write.mint([solver.address, parseUnits("1000000", BUY_DECIMALS)]);
+    await buyToken.write.mint([
+      solver.address,
+      parseUnits("1000000", BUY_DECIMALS),
+    ]);
 
     // Users approve Permit2 once, not the settlement contract.
-    await sellToken.write.approve([PERMIT2_ADDRESS, MAX_UINT256], { account: user.account });
+    await sellToken.write.approve([PERMIT2_ADDRESS, MAX_UINT256], {
+      account: user.account,
+    });
   });
 
   describe("permit2 wiring", () => {
     it("uses the canonical Permit2 deployment", async () => {
-      assert.equal(await settlement.read.PERMIT2(), getAddress(PERMIT2_ADDRESS));
+      assert.equal(
+        await settlement.read.PERMIT2(),
+        getAddress(PERMIT2_ADDRESS),
+      );
 
       const code = await publicClient.getCode({ address: PERMIT2_ADDRESS });
       assert.ok(code && code.length > 2);
@@ -142,12 +169,22 @@ describe("SwapSettlement", async () => {
       const signature = await signPermit(permit, witness);
 
       await settlement.write.settle(
-        [permit, user.account.address, witness, signature, solver.address, "0x"],
+        [
+          permit,
+          user.account.address,
+          witness,
+          signature,
+          solver.address,
+          "0x",
+        ],
         { account: solverOperator.account },
       );
 
       assert.equal(await sellToken.read.balanceOf([user.account.address]), 0n);
-      assert.equal(await buyToken.read.balanceOf([user.account.address]), MIN_BUY_AMOUNT);
+      assert.equal(
+        await buyToken.read.balanceOf([user.account.address]),
+        MIN_BUY_AMOUNT,
+      );
       assert.equal(
         await sellToken.read.balanceOf([solverOperator.account.address]),
         SELL_AMOUNT,
@@ -160,7 +197,14 @@ describe("SwapSettlement", async () => {
       const signature = await signPermit(permit, witness);
 
       await settlement.write.settle(
-        [permit, user.account.address, witness, signature, solver.address, "0x"],
+        [
+          permit,
+          user.account.address,
+          witness,
+          signature,
+          solver.address,
+          "0x",
+        ],
         { account: solverOperator.account },
       );
 
@@ -176,7 +220,14 @@ describe("SwapSettlement", async () => {
       const signature = await signPermit(permit, witness);
 
       await settlement.write.settle(
-        [permit, user.account.address, witness, signature, solver.address, "0x"],
+        [
+          permit,
+          user.account.address,
+          witness,
+          signature,
+          solver.address,
+          "0x",
+        ],
         { account: solverOperator.account },
       );
 
@@ -193,7 +244,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.emitWithArgs(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         settlement,
@@ -215,11 +273,20 @@ describe("SwapSettlement", async () => {
     it("rejects a signature from someone other than the named owner", async () => {
       const permit = buildPermit();
       const witness = buildWitness();
-      const signature = await signPermit(permit, witness, { signer: solverOperator });
+      const signature = await signPermit(permit, witness, {
+        signer: solverOperator,
+      });
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         permit2,
@@ -257,7 +324,10 @@ describe("SwapSettlement", async () => {
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
           [
-            { ...permit, permitted: { ...permit.permitted, amount: SELL_AMOUNT / 2n } },
+            {
+              ...permit,
+              permitted: { ...permit.permitted, amount: SELL_AMOUNT / 2n },
+            },
             user.account.address,
             witness,
             signature,
@@ -274,12 +344,23 @@ describe("SwapSettlement", async () => {
     it("binds the signature to the settlement contract as spender", async () => {
       const permit = buildPermit();
       const witness = buildWitness();
-      const other = await viem.deployContract("SwapSettlement", [PERMIT2_ADDRESS]);
-      const signature = await signPermit(permit, witness, { spender: other.address });
+      const other = await viem.deployContract("SwapSettlement", [
+        PERMIT2_ADDRESS,
+      ]);
+      const signature = await signPermit(permit, witness, {
+        spender: other.address,
+      });
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         permit2,
@@ -294,7 +375,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         permit2,
@@ -310,7 +398,14 @@ describe("SwapSettlement", async () => {
       const signature = await signPermit(permit, witness);
 
       await settlement.write.settle(
-        [permit, user.account.address, witness, signature, solver.address, "0x"],
+        [
+          permit,
+          user.account.address,
+          witness,
+          signature,
+          solver.address,
+          "0x",
+        ],
         { account: solverOperator.account },
       );
 
@@ -318,7 +413,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         permit2,
@@ -338,7 +440,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         permit2,
@@ -357,7 +466,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         settlement,
@@ -374,14 +490,24 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         solver,
         "SolverFailure",
       );
 
-      assert.equal(await sellToken.read.balanceOf([user.account.address]), SELL_AMOUNT);
+      assert.equal(
+        await sellToken.read.balanceOf([user.account.address]),
+        SELL_AMOUNT,
+      );
     });
 
     it("reverts when the user balance is short", async () => {
@@ -393,7 +519,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         settlement,
@@ -412,7 +545,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         settlement,
@@ -427,7 +567,14 @@ describe("SwapSettlement", async () => {
 
       await viem.assertions.revertWithCustomError(
         settlement.write.settle(
-          [permit, user.account.address, witness, signature, solver.address, "0x"],
+          [
+            permit,
+            user.account.address,
+            witness,
+            signature,
+            solver.address,
+            "0x",
+          ],
           { account: solverOperator.account },
         ),
         settlement,
@@ -470,7 +617,10 @@ describe("SwapSettlement", async () => {
       { account: solverOperator.account },
     );
 
-    assert.equal(await sellToken.read.balanceOf([deployer.account.address]), 0n);
+    assert.equal(
+      await sellToken.read.balanceOf([deployer.account.address]),
+      0n,
+    );
     assert.equal(await buyToken.read.balanceOf([deployer.account.address]), 0n);
   });
 });

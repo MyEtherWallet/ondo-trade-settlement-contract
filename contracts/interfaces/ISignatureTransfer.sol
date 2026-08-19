@@ -30,7 +30,10 @@ interface ISignatureTransfer {
     }
 
     /// @notice Bitmap of consumed unordered nonces, keyed by owner and word position.
-    function nonceBitmap(address owner, uint256 word) external view returns (uint256);
+    function nonceBitmap(
+        address owner,
+        uint256 word
+    ) external view returns (uint256);
 
     function DOMAIN_SEPARATOR() external view returns (bytes32);
 
