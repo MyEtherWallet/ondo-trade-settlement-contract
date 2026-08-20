@@ -12,8 +12,10 @@ import {ISignatureTransfer} from "./interfaces/ISignatureTransfer.sol";
 /// @notice Settles a user-signed swap intent against solver-provided liquidity.
 /// @dev The user approves Permit2 once and signs a Permit2 `PermitWitnessTransferFrom`
 /// whose witness commits to the buy side of the trade. A solver calls {settle}, which
-/// pulls the sell token through Permit2, hands control to the solver's callback to
-/// source the buy token, then pays the user and the solver atomically.
+/// pulls the sell token through Permit2, forwards it to the solver's callback so the buy
+/// side can be sourced with the user's own funds, then pays the user. Delivering less
+/// than the signed minimum reverts the whole transaction, so the forwarded sell token is
+/// never at risk.
 ///
 /// Permit2 owns signature verification, expiry, and replay protection: the signature is
 /// bound to this contract as the spender, so it cannot be redirected to another
@@ -81,7 +83,8 @@ contract SwapSettlement is ReentrancyGuard {
     /// @param user The order signer, who receives `toToken`.
     /// @param witness Buy-side terms bound to the same signature.
     /// @param signature The user's Permit2 `PermitWitnessTransferFrom` signature.
-    /// @param callbackTarget Solver contract that delivers `toToken` to this contract.
+    /// @param callbackTarget Solver contract that receives `fromToken` and delivers
+    /// `toToken` to this contract.
     /// @param callbackData Opaque data forwarded to `callbackTarget`.
     /// @return toAmount Amount of `toToken` delivered to the user.
     function settle(
@@ -121,6 +124,8 @@ contract SwapSettlement is ReentrancyGuard {
             revert SellTransferShortfall(fromAmount, permit.permitted.amount);
         }
 
+        fromToken.safeTransfer(callbackTarget, fromAmount);
+
         ISettlementCallback(callbackTarget).settlementCallback(
             address(fromToken),
             fromAmount,
@@ -135,7 +140,6 @@ contract SwapSettlement is ReentrancyGuard {
         }
 
         toToken.safeTransfer(user, toAmount);
-        fromToken.safeTransfer(msg.sender, fromAmount);
 
         emit Settled(
             user,

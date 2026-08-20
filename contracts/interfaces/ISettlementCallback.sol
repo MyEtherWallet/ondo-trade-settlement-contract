@@ -3,10 +3,11 @@ pragma solidity ^0.8.28;
 
 /// @notice Implemented by solvers that source liquidity for a settlement.
 interface ISettlementCallback {
-    /// @dev Called by the settlement contract after it has custody of `fromAmount` of
-    /// `fromToken`. The implementation must transfer at least `minToAmount` of `toToken`
-    /// to `msg.sender` (the settlement contract) before returning. The `fromToken` is
-    /// paid out to the settlement caller only after this call succeeds.
+    /// @dev Called by the settlement contract once `fromAmount` of `fromToken` has been
+    /// transferred to this contract, so the implementation can source the buy side with
+    /// the user's own funds. It must transfer at least `minToAmount` of `toToken` to
+    /// `msg.sender` (the settlement contract) before returning; otherwise settlement
+    /// reverts and the `fromToken` transfer unwinds with it.
     function settlementCallback(
         address fromToken,
         uint256 fromAmount,

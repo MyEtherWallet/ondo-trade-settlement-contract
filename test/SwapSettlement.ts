@@ -163,7 +163,7 @@ describe("SwapSettlement", async () => {
   });
 
   describe("settle", () => {
-    it("pays the user the buy token and the caller the sell token", async () => {
+    it("pays the user the buy token and the callback target the sell token", async () => {
       const permit = buildPermit();
       const witness = buildWitness();
       const signature = await signPermit(permit, witness);
@@ -185,8 +185,46 @@ describe("SwapSettlement", async () => {
         await buyToken.read.balanceOf([user.account.address]),
         MIN_BUY_AMOUNT,
       );
+      // The sell token goes to callbackTarget, which needs it to source the buy
+      // side, not to the caller.
+      assert.equal(
+        await sellToken.read.balanceOf([solver.address]),
+        SELL_AMOUNT,
+      );
       assert.equal(
         await sellToken.read.balanceOf([solverOperator.account.address]),
+        0n,
+      );
+    });
+
+    // The point of forwarding before the callback: a solver can fund the buy side
+    // from the user's own money instead of its own balance. MockSolver asserts
+    // custody internally, so this fails if the transfer moves back after the call.
+    it("gives the callback custody of the sell token before invoking it", async () => {
+      await solver.write.setRequireSellTokenReceived([true]);
+
+      const permit = buildPermit();
+      const witness = buildWitness();
+      const signature = await signPermit(permit, witness);
+
+      await settlement.write.settle(
+        [
+          permit,
+          user.account.address,
+          witness,
+          signature,
+          solver.address,
+          "0x",
+        ],
+        { account: solverOperator.account },
+      );
+
+      assert.equal(
+        await buyToken.read.balanceOf([user.account.address]),
+        MIN_BUY_AMOUNT,
+      );
+      assert.equal(
+        await sellToken.read.balanceOf([solver.address]),
         SELL_AMOUNT,
       );
     });
