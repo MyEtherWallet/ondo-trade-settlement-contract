@@ -1199,13 +1199,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dotenv@npm:^17.4.2":
-  version: 17.4.2
-  resolution: "dotenv@npm:17.4.2"
-  checksum: 10c0/164f8e77a646c8446867d5b588d26ea6005c8ea7c5eb41cf926f6113d23f2191355f6e0cfd95ea9bab98394a5b0a3f1e51a8399711b666fe55cc7b0bd745f942
-  languageName: node
-  linkType: hard
-
 "elliptic@npm:6.6.1":
   version: 6.6.1
   resolution: "elliptic@npm:6.6.1"
@@ -1690,7 +1683,6 @@ __metadata:
     "@nomicfoundation/ignition-core": "npm:^3.1.9"
     "@openzeppelin/contracts": "npm:5.6.1"
     "@types/node": "npm:^22"
-    dotenv: "npm:^17.4.2"
     hardhat: "npm:^3"
     typescript: "npm:~5.8"
     viem: "npm:^2.55.18"

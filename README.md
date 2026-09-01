@@ -199,3 +199,28 @@ JSON file with `--parameters`:
 ```json
 { "SwapSettlementModule": { "permit2": "0x..." } }
 ```
+
+Secrets are read from a git-ignored `.env` (loaded by `dotenv` in the config):
+
+```bash
+PRIV_KEY=0x...              # deployer key
+ETHERSCAN_API_KEY=...       # source verification
+```
+
+### Verification
+
+```bash
+yarn verify:mainnet   # hardhat ignition verify chain-1
+```
+
+Ignition verifies every contract in a deployment using the recorded constructor arguments.
+To verify an address directly instead:
+
+```bash
+yarn hardhat verify --network mainnet <address> <permit2Address>
+```
+
+`ETHERSCAN_API_KEY` is declared with `configVariable`, so it is resolved only when a verify
+task runs — builds, tests, and deploys work without it. Blockscout and Sourcify are enabled
+by default alongside Etherscan; disable them under `verify` in
+[hardhat.config.ts](hardhat.config.ts) if you only want Etherscan.

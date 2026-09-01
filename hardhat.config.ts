@@ -1,6 +1,5 @@
-import "dotenv/config";
-
 import type { HardhatUserConfig } from "hardhat/config";
+import { configVariable } from "hardhat/config";
 
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 
@@ -32,7 +31,13 @@ const config: HardhatUserConfig = {
       type: "http",
       chainType: "l1",
       url: "https://nodes.mewapi.io/rpc/eth",
-      accounts: process.env.PRIV_KEY ? [process.env.PRIV_KEY] : [],
+      accounts: configVariable("PRIV_KEY") ? [configVariable("PRIV_KEY")] : [],
+    },
+  },
+  verify: {
+    // Resolved only when a verify task runs, so builds and tests work without the key.
+    etherscan: {
+      apiKey: configVariable("ETHERSCAN_API_KEY"),
     },
   },
 };
