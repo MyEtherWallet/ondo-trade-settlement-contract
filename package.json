@@ -7,7 +7,7 @@
     "build": "hardhat build",
     "clean": "hardhat clean",
     "typecheck": "tsc --noEmit",
-    "deploy:mainnet": "hardhat ignition deploy ignition/modules/IncentiveFusion.js --network mainnet"
+    "deploy:mainnet": "hardhat ignition deploy ignition/modules/SwapSettlement.ts --network mainnet"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +26,7 @@
     "@nomicfoundation/hardhat-viem-assertions": "^3.1.2",
     "@nomicfoundation/ignition-core": "^3.1.9",
     "@types/node": "^22",
+    "dotenv": "^17.4.2",
     "hardhat": "^3",
     "typescript": "~5.8",
     "viem": "^2.55.18"
