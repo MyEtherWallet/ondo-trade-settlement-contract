@@ -16,6 +16,12 @@ const config: HardhatUserConfig = {
       type: "edr-simulated",
       chainType: "l1",
     },
+    mainnet: {
+      type: "http",
+      chainType: "l1",
+      url: "https://nodes.mewapi.io/rpc/eth",
+      accounts: process.env.PRIV_KEY ? [process.env.PRIV_KEY] : [],
+    },
   },
 };
 

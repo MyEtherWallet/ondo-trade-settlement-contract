@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {ISettlementCallback} from "./interfaces/ISettlementCallback.sol";
@@ -20,7 +22,7 @@ import {ISignatureTransfer} from "./interfaces/ISignatureTransfer.sol";
 /// Permit2 owns signature verification, expiry, and replay protection: the signature is
 /// bound to this contract as the spender, so it cannot be redirected to another
 /// settlement contract.
-contract SwapSettlement is ReentrancyGuard {
+contract SwapSettlement is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Buy-side terms committed to by the user's Permit2 signature.
@@ -55,6 +57,14 @@ contract SwapSettlement is ReentrancyGuard {
         uint256 toAmount
     );
 
+    event TokensRescued(
+        address indexed token,
+        address indexed to,
+        uint256 amount
+    );
+
+    event ETHRescued(address indexed to, uint256 amount);
+
     error InvalidPermit2();
     error InvalidOrder();
     error InvalidCallbackTarget();
@@ -63,8 +73,9 @@ contract SwapSettlement is ReentrancyGuard {
     error InsufficientPermit2Allowance(uint256 available, uint256 required);
     error SellTransferShortfall(uint256 received, uint256 expected);
     error InsufficientOutput(uint256 received, uint256 minimum);
+    error InvalidRecipient();
 
-    constructor(ISignatureTransfer permit2) {
+    constructor(ISignatureTransfer permit2) Ownable(msg.sender) {
         if (address(permit2) == address(0)) revert InvalidPermit2();
         PERMIT2 = permit2;
     }
@@ -202,5 +213,30 @@ contract SwapSettlement is ReentrancyGuard {
         uint256 allowance = token.allowance(user, address(PERMIT2));
         if (allowance < amount)
             revert InsufficientPermit2Allowance(allowance, amount);
+    }
+
+    /// @notice Sends stray ERC-20 tokens held by this contract to `to`.
+    /// @dev A completed settlement never leaves a balance behind, so anything held here
+    /// arrived out of band. `nonReentrant` keeps this from running inside a settlement
+    /// callback, where in-flight funds would otherwise be exposed.
+    function rescueTokens(
+        IERC20 token,
+        address to,
+        uint256 amount
+    ) external onlyOwner nonReentrant {
+        if (to == address(0)) revert InvalidRecipient();
+        token.safeTransfer(to, amount);
+        emit TokensRescued(address(token), to, amount);
+    }
+
+    /// @notice Sends stray ETH held by this contract to `to`.
+    /// @dev The contract is non-payable, so any balance was force-sent.
+    function rescueETH(
+        address to,
+        uint256 amount
+    ) external onlyOwner nonReentrant {
+        if (to == address(0)) revert InvalidRecipient();
+        Address.sendValue(payable(to), amount);
+        emit ETHRescued(to, amount);
     }
 }

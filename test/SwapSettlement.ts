@@ -694,6 +694,118 @@ describe("SwapSettlement", async () => {
     });
   });
 
+  describe("rescue", () => {
+    const STRAY_TOKENS = parseUnits("7", SELL_DECIMALS);
+    const STRAY_ETH = 10n ** 18n;
+
+    it("makes the deployer the owner", async () => {
+      assert.equal(
+        await settlement.read.owner(),
+        getAddress(deployer.account.address),
+      );
+    });
+
+    it("lets the owner rescue stray tokens", async () => {
+      await sellToken.write.mint([settlement.address, STRAY_TOKENS]);
+
+      await viem.assertions.emitWithArgs(
+        settlement.write.rescueTokens(
+          [sellToken.address, deployer.account.address, STRAY_TOKENS],
+          { account: deployer.account },
+        ),
+        settlement,
+        "TokensRescued",
+        [
+          getAddress(sellToken.address),
+          getAddress(deployer.account.address),
+          STRAY_TOKENS,
+        ],
+      );
+
+      assert.equal(await sellToken.read.balanceOf([settlement.address]), 0n);
+      assert.equal(
+        await sellToken.read.balanceOf([deployer.account.address]),
+        STRAY_TOKENS,
+      );
+    });
+
+    it("lets the owner rescue force-sent ETH", async () => {
+      await provider.request({
+        method: "hardhat_setBalance",
+        params: [settlement.address, `0x${STRAY_ETH.toString(16)}`],
+      });
+
+      const recipient = solverOperator.account.address;
+      const before = await publicClient.getBalance({ address: recipient });
+
+      await settlement.write.rescueETH([recipient, STRAY_ETH], {
+        account: deployer.account,
+      });
+
+      assert.equal(
+        await publicClient.getBalance({ address: settlement.address }),
+        0n,
+      );
+      assert.equal(
+        await publicClient.getBalance({ address: recipient }),
+        before + STRAY_ETH,
+      );
+    });
+
+    it("blocks non-owners from rescuing", async () => {
+      await sellToken.write.mint([settlement.address, STRAY_TOKENS]);
+
+      await viem.assertions.revertWithCustomError(
+        settlement.write.rescueTokens(
+          [sellToken.address, solverOperator.account.address, STRAY_TOKENS],
+          { account: solverOperator.account },
+        ),
+        settlement,
+        "OwnableUnauthorizedAccount",
+      );
+
+      await viem.assertions.revertWithCustomError(
+        settlement.write.rescueETH([solverOperator.account.address, 1n], {
+          account: solverOperator.account,
+        }),
+        settlement,
+        "OwnableUnauthorizedAccount",
+      );
+    });
+
+    it("rejects a zero recipient", async () => {
+      const zero = "0x0000000000000000000000000000000000000000" as const;
+
+      await viem.assertions.revertWithCustomError(
+        settlement.write.rescueTokens([sellToken.address, zero, 0n], {
+          account: deployer.account,
+        }),
+        settlement,
+        "InvalidRecipient",
+      );
+
+      await viem.assertions.revertWithCustomError(
+        settlement.write.rescueETH([zero, 0n], { account: deployer.account }),
+        settlement,
+        "InvalidRecipient",
+      );
+    });
+
+    it("cannot rescue funds that are mid-settlement", async () => {
+      const permit = buildPermit();
+      const witness = buildWitness();
+      const signature = await signPermit(permit, witness);
+
+      await settlement.write.settle(
+        [permit, user.account.address, witness, signature, solver.address, "0x"],
+        { account: solverOperator.account },
+      );
+
+      assert.equal(await sellToken.read.balanceOf([settlement.address]), 0n);
+      assert.equal(await buyToken.read.balanceOf([settlement.address]), 0n);
+    });
+  });
+
   it("keeps the deployer wallet uninvolved in settlement", async () => {
     const permit = buildPermit();
     const witness = buildWitness();

@@ -150,6 +150,21 @@ an unsettled order with `permit2.invalidateUnorderedNonces(nonce >> 8, 1 << (non
 - Surplus output above `minToAmount` currently goes to the **user**. There is no protocol fee.
 - This code has not been audited.
 
+## Ownership and rescue
+
+The contract is `Ownable` (OpenZeppelin), with the deployer as the initial owner. The owner
+has no control over settlement — only recovery of funds that ended up here out of band:
+
+```solidity
+function rescueTokens(IERC20 token, address to, uint256 amount) external onlyOwner;
+function rescueETH(address to, uint256 amount) external onlyOwner;
+```
+
+A completed settlement never leaves a token balance behind, and the contract is non-payable,
+so ETH can only arrive by force-send. Both functions are `nonReentrant`, so they cannot be
+invoked from inside a settlement callback where in-flight funds would be exposed. Transfer
+ownership to a multisig with `transferOwnership` before mainnet use.
+
 ## Development
 
 Requires Node.js 22+ and Yarn 4.

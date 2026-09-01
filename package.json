@@ -6,7 +6,8 @@
     "test": "hardhat test",
     "build": "hardhat build",
     "clean": "hardhat clean",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy:mainnet": "hardhat ignition deploy ignition/modules/IncentiveFusion.js --network mainnet"
   },
   "keywords": [],
   "author": "",
