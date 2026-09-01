@@ -34,7 +34,9 @@ contract SwapSettlement is Ownable, ReentrancyGuard {
 
     /// @notice EIP-712 type hash of {SwapWitness}.
     bytes32 public constant WITNESS_TYPEHASH =
-        keccak256("SwapWitness(address toToken,uint256 minToAmount,address solver)");
+        keccak256(
+            "SwapWitness(address toToken,uint256 minToAmount,address solver)"
+        );
 
     /// @notice Witness type string appended to Permit2's `PermitWitnessTransferFrom` stub.
     /// @dev Referenced struct types must follow EIP-712 alphabetical ordering, and the

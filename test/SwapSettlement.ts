@@ -797,7 +797,14 @@ describe("SwapSettlement", async () => {
       const signature = await signPermit(permit, witness);
 
       await settlement.write.settle(
-        [permit, user.account.address, witness, signature, solver.address, "0x"],
+        [
+          permit,
+          user.account.address,
+          witness,
+          signature,
+          solver.address,
+          "0x",
+        ],
         { account: solverOperator.account },
       );
 
